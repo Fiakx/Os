@@ -1,0 +1,97 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc} % Pour les caractères accentués
+\usepackage[french]{babel} % Pour la langue française
+\usepackage{geometry} % Pour ajuster les marges
+\usepackage{graphicx} % Pour insérer des images
+\geometry{a4paper, margin=1.5cm} % Marges plus étroites
+\usepackage{listings} % Pour afficher du code
+\usepackage{xcolor} % Pour la coloration syntaxique
+\geometry{a4paper, margin=1.5cm} % Marges plus étroites
+\lstset{
+    backgroundcolor=\color{gray!10}, % Fond gris clair
+    basicstyle=\ttfamily\small, % Police monospace
+    breaklines=true, % Retour à la ligne automatique
+    frame=single, % Encadrement du code
+    language=sh, % Langage du code (ici, shell)
+    showstringspaces=false, % Ne pas montrer les espaces dans les chaînes
+    numbers=left, % Numérotation des lignes à gauche
+    numberstyle=\tiny\color{gray}, % Style des numéros de ligne
+    keywordstyle=\color{blue}, % Style des mots-clés
+    commentstyle=\color{green!50!black}, % Style des commentaires
+    stringstyle=\color{red}, % Style des chaînes de caractères
+}
+
+
+\title{os}
+\author{fiakx dur}
+\date{March 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Il y a un début à tout, non ?}
+
+\subsection{Cross Compiler}
+
+\subsubsection{Contexte}
+Quand tu développes un système d'exploitation, tu travailles généralement sur une machine (qu'on appellera \textbf{l'hôte}) qui a déjà un OS installé (comme Linux, Windows, ou macOS). Cependant, ton objectif est de créer un nouvel OS qui fonctionnera sur une autre machine (qu'on appellera ici \textbf{cible}), qui peut avoir une architecture matérielle différente (par exemple, x86, ARM, etc.).
+
+Le problème est que le compilateur présent sur ta machine hôte est configuré pour produire des programmes qui fonctionnent sur cette machine hôte, pas sur la machine cible. C'est là qu'intervient la notion de \textbf{cross-compilation}.
+
+\subsubsection{Cross-Compilation}
+Un \textbf{cross-compilateur} est un compilateur qui fonctionne sur une plateforme (hôte) mais qui produit des exécutables pour une autre plateforme (cible). Par exemple, si tu développes sur un PC x86 sous Linux, mais que tu veux créer un OS pour une machine ARM, tu as besoin d'un cross-compilateur qui tourne sur x86 mais qui génère du code pour ARM.
+
+\subsubsection{Pourquoi est-ce nécessaire ?}
+La cross-compilation est essentielle pour plusieurs raisons :
+
+\begin{itemize}
+    \item \textbf{Architecture différente} : Si la cible a une architecture matérielle différente de celle de l'hôte, le compilateur natif ne peut pas produire de code exécutable pour cette architecture.
+    
+    \item \textbf{Environnement de développement} : Tu veux pouvoir développer et tester ton OS sur une machine qui a déjà un OS fonctionnel, sans avoir à tout réécrire pour la cible.
+    
+    \item \textbf{Efficacité} : Utiliser un cross-compilateur te permet de générer rapidement des binaires pour la cible sans avoir à installer un environnement de développement complet sur la cible.
+\end{itemize}
+
+\subsubsection{Oui, mais comment on installe tout ça ?}
+
+% L'image est placée à la fin du texte
+\begin{figure}[h!] % h! force l'image à être placée ici
+    \centering % Centre l'image
+    \includegraphics[width=0.2\textwidth]{mem.jpeg} % Chemin de l'image
+    \label{fig:logo} % Étiquette pour référencer l'image
+\end{figure}
+\paragraph{Télécharger touskilfaut pour le compilateur\\}
+Tu auras besoin des sources de GCC (GNU Compiler Collection) et de binutils (un ensemble d'outils pour manipuler les binaires).
+
+\paragraph{Configurer le cross-compilateur\\}
+Tu dois configurer GCC pour qu'il sache qu'il doit produire du code pour la cible et non pour l'hôte. Cela se fait généralement en spécifiant des options de configuration lors de la compilation de GCC.
+
+Par exemple, si tu veux compiler pour une architecture ARM, tu utiliserais une commande comme :
+
+\begin{lstlisting}
+./configure --target=arm-none-eabi --prefix=/usr/local/cross
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{--target} spécifie l'architecture cible (ici, \texttt{arm-none-eabi}).
+    \item \texttt{--prefix} indique où installer le cross-compilateur (ici, \texttt{/usr/local/cross}).
+\end{itemize}
+
+\paragraph{Compiler et installer\\}
+Une fois configuré, tu compiles et installes le cross-compilateur. Cela peut prendre un certain temps car GCC est un gros projet.
+
+\paragraph{Utiliser le cross-compilateur\\}
+Une fois installé, tu peux utiliser ce compilateur pour générer des exécutables pour ta cible. Par exemple, si tu as un fichier C \texttt{hello.c}, tu peux le compiler avec :
+
+\begin{lstlisting}
+arm-none-eabi-gcc -o hello hello.c
+\end{lstlisting}
+
+Cela produira un exécutable \texttt{hello} qui fonctionnera sur une machine ARM.
+\begin{figure}[h!] % h! force l'image à être placée ici
+    \centering % Centre l'image
+    \includegraphics[width=0.1\textwidth]{mem2.jpg} % Chemin de l'image
+    \label{fig:logo} % Étiquette pour référencer l'image
+\end{figure}
+\end{document}
