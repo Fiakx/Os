@@ -7,6 +7,8 @@
 \usepackage{listings} % Pour afficher du code
 \usepackage{xcolor} % Pour la coloration syntaxique
 \geometry{a4paper, margin=1.5cm} % Marges plus étroites
+\usepackage[absolute]{textpos} % Pour le positionnement absolu
+\usepackage{lipsum} % Pour générer du texte de remplissage (optionnel)
 \lstset{
     backgroundcolor=\color{gray!10}, % Fond gris clair
     basicstyle=\ttfamily\small, % Police monospace
@@ -58,7 +60,7 @@ La cross-compilation est essentielle pour plusieurs raisons :
 \begin{figure}[h!] % h! force l'image à être placée ici
     \centering % Centre l'image
     \includegraphics[width=0.2\textwidth]{mem.jpeg} % Chemin de l'image
-    \label{fig:logo} % Étiquette pour référencer l'image
+    \label{fig:logo1} % Étiquette pour référencer l'image
 \end{figure}
 \paragraph{Télécharger touskilfaut pour le compilateur\\}
 Tu auras besoin des sources de GCC (GNU Compiler Collection) et de binutils (un ensemble d'outils pour manipuler les binaires).
@@ -87,10 +89,18 @@ Une fois installé, tu peux utiliser ce compilateur pour générer des exécutab
 arm-none-eabi-gcc -o hello hello.c
 \end{lstlisting}
 
-Cela produira un exécutable \texttt{hello} qui fonctionnera sur une machine ARM.
+Cela produira un exécutable \texttt{hello} qui fonctionnera sur une machine ARM.\\
 \begin{figure}[h!] % h! force l'image à être placée ici
     \centering % Centre l'image
     \includegraphics[width=0.1\textwidth]{mem2.jpg} % Chemin de l'image
-    \label{fig:logo} % Étiquette pour référencer l'image
+    \label{fig:logo2} % Étiquette pour référencer l'image
 \end{figure}
+
+
+
+% en bas a droite
+\begin{textblock*}{10cm}(10cm, 27cm) % Ajustez les coordonnées (x, y)
+    \textbf{sources : wiki.osdev.org, reddit.com, stackoverflow.com}
+\end{textblock*}
+s
 \end{document}
