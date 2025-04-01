@@ -1,32 +1,50 @@
 \documentclass{article}
-\usepackage[utf8]{inputenc} % Pour les caractères accentués
-\usepackage[french]{babel} % Pour la langue française
-\usepackage{geometry} % Pour ajuster les marges
-\usepackage{graphicx} % Pour insérer des images
-\geometry{a4paper, margin=1.5cm} % Marges plus étroites
-\usepackage{listings} % Pour afficher du code
-\usepackage{xcolor} % Pour la coloration syntaxique
-\geometry{a4paper, margin=1.5cm} % Marges plus étroites
-\usepackage[absolute]{textpos} % Pour le positionnement absolu
-\usepackage{lipsum} % Pour générer du texte de remplissage (optionnel)
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc} % Ajouté pour résoudre le problème d'encodage français
+\usepackage[french]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage[absolute]{textpos}
+\usepackage{lipsum}
+
+% Configuration des marges
+\geometry{a4paper, margin=1.5cm}
+
+% Configuration des listings
 \lstset{
-    backgroundcolor=\color{gray!10}, % Fond gris clair
-    basicstyle=\ttfamily\small, % Police monospace
-    breaklines=true, % Retour à la ligne automatique
-    frame=single, % Encadrement du code
-    language=sh, % Langage du code (ici, shell)
-    showstringspaces=false, % Ne pas montrer les espaces dans les chaînes
-    numbers=left, % Numérotation des lignes à gauche
-    numberstyle=\tiny\color{gray}, % Style des numéros de ligne
-    keywordstyle=\color{blue}, % Style des mots-clés
-    commentstyle=\color{green!50!black}, % Style des commentaires
-    stringstyle=\color{red}, % Style des chaînes de caractères
+    backgroundcolor=\color{gray!10},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    language=sh,
+    showstringspaces=false,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!50!black},
+    stringstyle=\color{red},
 }
 
+% Définition du langage assembleur pour listings
+\lstdefinelanguage{assembler}{
+    morekeywords={bits,section,global,extern,mov,call,hlt,resb},
+    sensitive=false,
+    morecomment=[l]{;},
+}
+
+% Définition du langage ld pour les scripts de linker
+\lstdefinelanguage{ld}{
+    morekeywords={ENTRY,SECTIONS,.text,.data,.bss},
+    sensitive=false,
+    morecomment=[l]{;},
+}
 
 \title{\Huge os}
 \author{\small Par fiakx}
 \date{}
+
 \begin{document}
 
 \maketitle
@@ -56,16 +74,16 @@ La cross-compilation est essentielle pour plusieurs raisons :
 
 \subsubsection{Oui, mais comment on installe tout ça ?}
 
-% L'image est placée à la fin du texte
-\begin{figure}[h!] % h! force l'image à être placée ici
-    \centering % Centre l'image
-    \includegraphics[width=0.2\textwidth]{mem.jpeg} % Chemin de l'image
-    \label{fig:logo1} % Étiquette pour référencer l'image
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.2\textwidth]{mem.jpeg}
+    \label{fig:logo1}
 \end{figure}
-\paragraph{Télécharger touskilfaut pour le compilateur\\}
+
+\paragraph{Télécharger touskilfaut pour le compilateur}
 Tu auras besoin des sources de GCC (GNU Compiler Collection) et de binutils (un ensemble d'outils pour manipuler les binaires).
 
-\paragraph{Configurer le cross-compilateur\\}
+\paragraph{Configurer le cross-compilateur}
 Tu dois configurer GCC pour qu'il sache qu'il doit produire du code pour la cible et non pour l'hôte. Cela se fait généralement en spécifiant des options de configuration lors de la compilation de GCC.
 
 Par exemple, si tu veux compiler pour une architecture ARM, tu utiliserais une commande comme :
@@ -79,28 +97,157 @@ Par exemple, si tu veux compiler pour une architecture ARM, tu utiliserais une c
     \item \texttt{--prefix} indique où installer le cross-compilateur (ici, \texttt{/usr/local/cross}).
 \end{itemize}
 
-\paragraph{Compiler et installer\\}
+\paragraph{Compiler et installer}
 Une fois configuré, tu compiles et installes le cross-compilateur. Cela peut prendre un certain temps car GCC est un gros projet.
 
-\paragraph{Utiliser le cross-compilateur\\}
+\paragraph{Utiliser le cross-compilateur}
 Une fois installé, tu peux utiliser ce compilateur pour générer des exécutables pour ta cible. Par exemple, si tu as un fichier C \texttt{hello.c}, tu peux le compiler avec :
 
 \begin{lstlisting}
 arm-none-eabi-gcc -o hello hello.c
 \end{lstlisting}
 
-Cela produira un exécutable \texttt{hello} qui fonctionnera sur une machine ARM.\\
-\begin{figure}[h!] % h! force l'image à être placée ici
-    \centering % Centre l'image
-    \includegraphics[width=0.1\textwidth]{mem2.jpg} % Chemin de l'image
-    \label{fig:logo2} % Étiquette pour référencer l'image
+Cela produira un exécutable \texttt{hello} qui fonctionnera sur une machine ARM.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.1\textwidth]{mem2.jpg}
+    \label{fig:logo2}
 \end{figure}
 
 
 
-% en bas a droite
-\begin{textblock*}{10cm}(10cm, 27cm) % Ajustez les coordonnées (x, y)
-    \textbf{sources : wiki.osdev.org, reddit.com, stackoverflow.com}
+\subsection{Création de to premier kernel ! (ou noyau en français)}
+Ici nous allons voir comment créer un noyau (\textit{kernel}) minimal en C et assembleur pour une architecture x86.
+\subsubsection{Prérequis}
+\paragraph{Outils nécessaires :}
+\begin{itemize}
+    \item \textbf{Compilateur} : GCC cross-compiler (ciblant \texttt{i686-elf} ou \texttt{x86\_64-elf})
+    \item \textbf{Assembleur} : NASM (recommandé) ou GAS
+    \item \textbf{Linker} : GNU LD
+    \item \textbf{Émulateur} : QEMU, Bochs ou VirtualBox
+\end{itemize}
+
+\subsubsection{Configuration du cross-compiler}
+Un cross-compiler est nécessaire pour éviter d'utiliser les librairies de l'hôte.\\
+    (Remonte en haut du Pdf pour configurer ton propre cross-compiler.)
+
+\subsubsection{Structure du projet (Arborescence)}
+Les fichiers essentiels sont :
+
+\begin{verbatim}
+ton_projet/
+ boot.asm    # Code assembleur de démarrage
+ kernel.c    # Noyau principal en C
+ linker.ld   # Script de linking
+\end{verbatim}
+
+\subsubsection{Code Assembleur (boot.asm)}
+\paragraph{Rôle}
+\begin{itemize}
+    \item Passe en mode 32 bits
+    \item Initialise la pile (\textit{stack})
+    \item Appelle la fonction \texttt{kernel\_main} en C
+\end{itemize}
+
+\subsubsection{Exemple (NASM)}
+\begin{lstlisting}[language=assembler]
+bits 32          ; Mode 32 bits
+section .text
+global start     ; Point d'entree pour le linker
+extern kernel_main ; Fonction principale en C
+
+start:
+    mov esp, stack_top ; Initialise la pile
+    call kernel_main   ; Appel du noyau
+    hlt                ; Arrete le CPU
+
+section .bss
+stack_bottom: resb 4096 ; Reserve 4 Ko pour la pile
+stack_top:
+\end{lstlisting}
+
+\subsection{Code du Noyau (kernel.c)}
+\subsubsection{Fonction principale}
+Le noyau écrit directement dans la mémoire vidéo VGA (adresse \texttt{0xB8000}).
+
+\begin{lstlisting}[language=C]
+void kernel_main() {
+    const char *str = "Hello, kernel World!";
+    unsigned short *vga_buffer = (unsigned short *)0xB8000;
+    
+    for (int i = 0; str[i] != '\0'; i++) {
+        vga_buffer[i] = (unsigned short)str[i] | 0x0F00; 
+        /* Couleur blanc sur noir */
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Script de Linking (linker.ld)}
+\paragraph{Rôle}
+Organise les sections en mémoire et définit l'adresse de chargement (\texttt{0x100000}).
+
+\begin{lstlisting}[language=ld]
+ENTRY(start)           ; Point d'entree = 'start' (boot.asm)
+
+SECTIONS {
+    . = 0x100000;      ; Adresse de chargement
+
+    .text : {
+        *(.text)       ; Code
+    }
+
+    .data : {
+        *(.data)       ; Donnees initialisees
+    }
+
+    .bss : {
+        *(.bss)        ; Donnees non initialisees
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Compilation et Linking}
+\subsubsection{Commandes}
+\begin{enumerate}
+    \item Assembler \texttt{boot.asm} :
+    \begin{lstlisting}[language=bash]
+    nasm -f elf32 boot.asm -o boot.o
+    \end{lstlisting}
+    
+    \item Compiler \texttt{kernel.c} :
+    \begin{lstlisting}[language=bash]
+    i686-elf-gcc -c kernel.c -o kernel.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+    \end{lstlisting}
+    
+    \item Linker les objets :
+    \begin{lstlisting}[language=bash]
+    i686-elf-ld -T linker.ld -o kernel.bin boot.o kernel.o -nostdlib
+    \end{lstlisting}
+\end{enumerate}
+
+\subsubsection{Tester avec QEMU}
+Lancer le noyau avec :
+\begin{lstlisting}[language=bash]
+qemu-system-i386 -kernel kernel.bin
+\end{lstlisting}
+
+\subsubsection{Prochaines Étapes}
+\begin{itemize}
+    \item Gestion des interruptions (IDT, PIC)
+    \item Allocation mémoire (paging, heap)
+    \item Pilotes (clavier, écran, etc.)
+\end{itemize}
+
+\subsubsection{Remarques Importantes}
+\begin{itemize}
+    \item Pas de librairie standard (\texttt{printf} ne fonctionne pas).
+    \item La pile doit être initialisée avant d'utiliser du C.
+    \item Le cross-compiler est obligatoire pour éviter des problèmes.
+\end{itemize}
+
+\begin{textblock*}{10cm}(10cm,16cm) % Position ajustée
+    \textbf{sources : wiki.osdev.org, reddit.com, stackoverflow.com, operating system concepts par (Silberchatz,Gavin,Gagne)}
 \end{textblock*}
 
 \end{document}
