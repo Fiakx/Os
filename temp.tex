@@ -1,6 +1,6 @@
 \documentclass{article}
 \usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc} % Ajouté pour résoudre le problème d'encodage français
+\usepackage[T1]{fontenc}
 \usepackage[french]{babel}
 \usepackage{geometry}
 \usepackage{graphicx}
@@ -8,6 +8,7 @@
 \usepackage{xcolor}
 \usepackage[absolute]{textpos}
 \usepackage{lipsum}
+\usepackage[colorlinks=true, linkcolor=blue, urlcolor=red]{hyperref}
 
 % Configuration des marges
 \geometry{a4paper, margin=1.5cm}
@@ -41,6 +42,7 @@
     morecomment=[l]{;},
 }
 
+
 \title{\Huge os}
 \author{\small Par fiakx}
 \date{}
@@ -49,19 +51,19 @@
 
 \maketitle
 
-\section{Il y a un début à tout, non ?}
+\section*{Il y a un début à tout, non ?}
 
-\subsection{Cross Compiler}
+\subsection*{Cross Compiler}
 
-\subsubsection{Contexte}
+\subsubsection*{Contexte}
 Quand tu développes un système d'exploitation, tu travailles généralement sur une machine (qu'on appellera \textbf{l'hôte}) qui a déjà un OS installé (comme Linux, Windows, ou macOS). Cependant, ton objectif est de créer un nouvel OS qui fonctionnera sur une autre machine (qu'on appellera ici \textbf{cible}), qui peut avoir une architecture matérielle différente (par exemple, x86, ARM, etc.).
 
 Le problème est que le compilateur présent sur ta machine hôte est configuré pour produire des programmes qui fonctionnent sur cette machine hôte, pas sur la machine cible. C'est là qu'intervient la notion de \textbf{cross-compilation}.
 
-\subsubsection{Cross-Compilation}
+\subsubsection*{Cross-Compilation}
 Un \textbf{cross-compilateur} est un compilateur qui fonctionne sur une plateforme (hôte) mais qui produit des exécutables pour une autre plateforme (cible). Par exemple, si tu développes sur un PC x86 sous Linux, mais que tu veux créer un OS pour une machine ARM, tu as besoin d'un cross-compilateur qui tourne sur x86 mais qui génère du code pour ARM.
 
-\subsubsection{Pourquoi est-ce nécessaire ?}
+\subsubsection*{Pourquoi est-ce nécessaire ?}
 La cross-compilation est essentielle pour plusieurs raisons :
 
 \begin{itemize}
@@ -72,7 +74,7 @@ La cross-compilation est essentielle pour plusieurs raisons :
     \item \textbf{Efficacité} : Utiliser un cross-compilateur te permet de générer rapidement des binaires pour la cible sans avoir à installer un environnement de développement complet sur la cible.
 \end{itemize}
 
-\subsubsection{Oui, mais comment on installe tout ça ?}
+\subsubsection*{Oui, mais comment on installe tout ça ?}
 
 \begin{figure}[h!]
     \centering
@@ -117,40 +119,41 @@ Cela produira un exécutable \texttt{hello} qui fonctionnera sur une machine ARM
 
 
 
-\subsection{Création de to premier kernel ! (ou noyau en français)}
-Ici nous allons voir comment créer un noyau (\textit{kernel}) minimal en C et assembleur pour une architecture x86.
-\subsubsection{Prérequis}
+\subsection*{Création de to premier kernel ! (ou noyau en français)}
+Ici nous allons voir comment créer un noyau (\textit{kernel}) minimal en C et assembleur pour une architecture x86. \\ \hyperref[fig:x86]{C'est quoi x86 ?}.
+\subsubsection*{Prérequis}
 \paragraph{Outils nécessaires :}
 \begin{itemize}
     \item \textbf{Compilateur} : GCC cross-compiler (ciblant \texttt{i686-elf} ou \texttt{x86\_64-elf})
-    \item \textbf{Assembleur} : NASM (recommandé) ou GAS
+    \item \textbf{Assembleur} : NASM  (recommandé) ou GAS   \hyperref[fig:nasm]{Voir plus}.
+
     \item \textbf{Linker} : GNU LD
     \item \textbf{Émulateur} : QEMU, Bochs ou VirtualBox
 \end{itemize}
 
-\subsubsection{Configuration du cross-compiler}
+\subsubsection*{Configuration du cross-compiler}
 Un cross-compiler est nécessaire pour éviter d'utiliser les librairies de l'hôte.\\
     (Remonte en haut du Pdf pour configurer ton propre cross-compiler.)
 
-\subsubsection{Structure du projet (Arborescence)}
+\subsubsection*{Structure du projet (Arborescence)}
 Les fichiers essentiels sont :
 
 \begin{verbatim}
 ton_projet/
  boot.asm    # Code assembleur de démarrage
  kernel.c    # Noyau principal en C
- linker.ld   # Script de linking
+ linker.ld   # Script de linking \hyperref[fig:linking]{voir plus sur linking}.
 \end{verbatim}
 
-\subsubsection{Code Assembleur (boot.asm)}
+\subsubsection*{Code Assembleur (boot.asm)}
 \paragraph{Rôle}
 \begin{itemize}
     \item Passe en mode 32 bits
-    \item Initialise la pile (\textit{stack})
-    \item Appelle la fonction \texttt{kernel\_main} en C
+    \item Initialise la pile (\textit{stack}) \hyperref[fig:pilenasm]{La pile ?}.
+    \item Appelle la fonction \texttt{kernel\_main} en C (une fonction externe a l'assembleur)
 \end{itemize}
 
-\subsubsection{Exemple (NASM)}
+\subsubsection*{Exemple (NASM)}
 \begin{lstlisting}[language=assembler]
 bits 32          ; Mode 32 bits
 section .text
@@ -158,17 +161,17 @@ global start     ; Point d'entree pour le linker
 extern kernel_main ; Fonction principale en C
 
 start:
-    mov esp, stack_top ; Initialise la pile
+    mov esp, stack_top ; Initialise la pile, ESP = pointeur de pile, place en haut de la zone reservee
     call kernel_main   ; Appel du noyau
     hlt                ; Arrete le CPU
 
 section .bss
-stack_bottom: resb 4096 ; Reserve 4 Ko pour la pile
-stack_top:
+stack_bottom: resb 4096 ; Reserve 4 Ko pour la pile (stack_bottom : Adresse de base de la pile.)
+stack_top: ; stack_top : Adresse du sommet (debut effectif,car la pile descend en memoire)
 \end{lstlisting}
 
-\subsection{Code du Noyau (kernel.c)}
-\subsubsection{Fonction principale}
+\subsection*{Code du Noyau (kernel.c)}
+\subsubsection*{Fonction principale}
 Le noyau écrit directement dans la mémoire vidéo VGA (adresse \texttt{0xB8000}).
 
 \begin{lstlisting}[language=C]
@@ -183,7 +186,7 @@ void kernel_main() {
 }
 \end{lstlisting}
 
-\subsubsection{Script de Linking (linker.ld)}
+\subsubsection*{Script de Linking (linker.ld)}
 \paragraph{Rôle}
 Organise les sections en mémoire et définit l'adresse de chargement (\texttt{0x100000}).
 
@@ -207,8 +210,8 @@ SECTIONS {
 }
 \end{lstlisting}
 
-\subsubsection{Compilation et Linking}
-\subsubsection{Commandes}
+\subsubsection*{Compilation et Linking}
+\subsubsection*{Commandes}
 \begin{enumerate}
     \item Assembler \texttt{boot.asm} :
     \begin{lstlisting}[language=bash]
@@ -226,28 +229,178 @@ SECTIONS {
     \end{lstlisting}
 \end{enumerate}
 
-\subsubsection{Tester avec QEMU}
+\subsubsection*{Tester avec QEMU}
 Lancer le noyau avec :
 \begin{lstlisting}[language=bash]
 qemu-system-i386 -kernel kernel.bin
 \end{lstlisting}
 
-\subsubsection{Prochaines Étapes}
+\subsubsection*{Prochaines Étapes}
 \begin{itemize}
     \item Gestion des interruptions (IDT, PIC)
     \item Allocation mémoire (paging, heap)
     \item Pilotes (clavier, écran, etc.)
 \end{itemize}
 
-\subsubsection{Remarques Importantes}
+\subsubsection*{Remarques Importantes}
 \begin{itemize}
     \item Pas de librairie standard (\texttt{printf} ne fonctionne pas).
     \item La pile doit être initialisée avant d'utiliser du C.
     \item Le cross-compiler est obligatoire pour éviter des problèmes.
 \end{itemize}
 
-\begin{textblock*}{10cm}(10cm,16cm) % Position ajustée
+\subsubsection*{Gnagnagna tu nous parles de x86 mais a quoi ça sert ????}
+\begin{figure}[h]
+    \label{fig:x86}
+\end{figure}
+\begin{itemize}
+    \item[\textbf{\textcolor{red}{$\bullet$}}] \textbf{Pour exécuter des programmes (logiciels, jeux, OS)}
+    \begin{itemize}
+        \item Tous les programmes que tu lances (Chrome, Photoshop, Windows, Linux) sont écrits pour fonctionner sur une architecture spécifique.
+        \item x86 (et son extension x86-64) est la norme des PC depuis 40 ans.
+    \end{itemize}
+    
+    \item[\textbf{\textcolor{red}{$\bullet$}}] \textbf{Pour l'assembleur (le langage machine)}
+    \begin{itemize}
+        \item L'assembleur x86 est le langage que le CPU comprend directement (ex: MOV EAX, 42 = "mets la valeur 42 dans le registre EAX").
+        \item Les compilateurs (C++, Rust, etc.) traduisent ton code en instructions x86 pour que le CPU l'exécute.
+        \item CPU = (Central Processing Unit), un microprocesseur installé sur la carte mère de l'ordinateur.
+    \end{itemize}
+    
+    \item[\textbf{\textcolor{red}{$\bullet$}}] \textbf{Pour l'encodage des instructions machine (bytes/code binaire)}
+    \begin{itemize}
+        \item Chaque instruction (ADD, JMP, etc.) est encodée en binaire (ex: B8 2A 00 00 00 = MOV EAX, 42 en hexadécimal).
+        \item Le CPU lit ces bytes et les exécute.
+    \end{itemize}
+    
+    \item[\textbf{\textcolor{red}{$\bullet$}}] \textbf{Pour la compatibilité}
+    \begin{itemize}
+        \item Un exécutable compilé pour x86 (32 bits) peut tourner sur un PC moderne en mode de compatibilité, même si le CPU est en 64 bits.
+    \end{itemize}
+\end{itemize}
+
+
+
+\subsubsection*{Qu'es ce que NASM ?}
+\begin{figure}[h]
+    \label{fig:nasm}
+\end{figure}
+NASM (Netwide Assembler) est un assembleur libre et open-source pour les architectures x86 et x86-64 (processeurs Intel/AMD). Il permet d'écrire des programmes directement en langage assembleur, un langage de bas niveau proche du langage machine. \\
+\begin{itemize}
+    \item[\textbf{\textcolor{red}{$\bullet$}}] \textbf{À quoi sert NASM ?}
+    \begin{itemize}
+        \item Contrôle précis du matériel : Optimiser des morceaux critiques de code (ex : jeux vidéo, noyaux de systèmes d’exploitation) car en effet coder a bas niveaux proche de la machine permet une meilleur efficacité.
+        \item Reverse engineering : Analyser ou modifier des binaires compilés.
+        \item Apprentissage : Comprendre comment fonctionne un CPU en pratique.
+    \end{itemize}
+    
+    \item[\textbf{\textcolor{red}{$\bullet$}}] \textbf{Exemple de code NASM (x86)}
+    
+\begin{lstlisting}[language=ld]
+    section .text
+global _start
+
+_start:
+    mov eax, 4       ; Appel systeme "write" (4)
+    mov ebx, 1       ; Sortie standard (1)
+    mov ecx, message ; Adresse du message
+    mov edx, len     ; Longueur du message
+    int 0x80         ; Interruption noyau
+
+    mov eax, 1       ; Appel systeme "exit" (1)
+    int 0x80
+
+section .dataExemple de code NASM (x86)
+message db 'Hello, World!', 0xA  ; Message + saut de ligne
+len     equ $ - message          ; Calcul de la longueur
+    \end{lstlisting}
+\end{itemize}
+
+\newpage
+
+\subsubsection*{La Pile ?}
+\begin{figure}
+    \label{fig:pilenasm}
+\end{figure}
+\begin{itemize}
+    \item[\textbf{\textcolor{red}{$\bullet$}}] \textbf{La pile est une structure LIFO (Last In, First Out) utilisée pour :}
+    \begin{itemize} 
+    \item Stocker temporairement des variables locales.
+    \item Sauvegarder des adresses de retour lors d’appels de fonctions (call).
+    \item Passer des arguments aux fonctions.
+    \end{itemize}
+    
+    \item[\textbf{\textcolor{red}{$\bullet$}}] \textbf{Fonctionnement de la Pile en x86}
+    \begin{itemize} 
+        \item     La pile grandit vers les adresses basses (décroissante).
+        \item push eax : Décrémente esp de 4, puis stocke eax à [esp].
+        \item pop eax : Récupère la valeur à [esp], puis incrémente esp de 4.
+    \end{itemize}
+    \item[\textbf{\textcolor{red}{$\bullet$}}] \textbf{Exemple d’utilisation :}
+    \begin{lstlisting}[language=ld]
+        push 0x42      ; Empile la valeur 0x42 (esp -= 4)
+        push eax       ; Empile le registre eax (esp -= 4)
+        pop ebx        ; Depile dans ebx (esp += 4)
+    \end{lstlisting}
+    \hyperref[fig:registres]{Voir plus sur les registres}.
+
+
+\end{itemize}
+
+\subsubsection*{Les Registres en Assembleur}
+\begin{figure}
+    \label{fig:registres}
+\end{figure}
+Un \textbf{registre} est une petite zone de mémoire \textbf{ultra-rapide} située directement dans le CPU. 
+C'est comme une "variable matérielle" utilisée pour stocker des données temporaires pendant l'exécution.
+
+
+\begin{itemize}
+    \item[\textbf{\textcolor{red}{$\bullet$}}] \textbf{À quoi ça sert ?}
+    \item Manipuler des données (calculs, comparaisons)
+    \item Stocker des adresses mémoire (pointeurs)
+    \item Contrôler le flux d'exécution (sauts, appels de fonctions)
+\end{itemize}
+
+\subsubsection*{Exemples de Registres (x86/x64)}
+\begin{itemize}
+    \item[\textbf{\textcolor{red}{$\bullet$}}] \textbf{Registres généraux (32/64 bits) :}
+    \item \texttt{EAX/RAX} : Accumulateur (résultats de calculs)
+    \item \texttt{EBX/RBX} : Base (adresses mémoire)
+    \item \texttt{ECX/RCX} : Compteur (boucles)
+    \item \texttt{EDX/RDX} : Données (opérations I/O)
+\end{itemize}
+
+\subsubsection*{Registres spéciaux :}
+\begin{itemize}
+    \item \texttt{ESP/RSP} : Pointeur de pile (\textit{stack})
+    \item \texttt{EIP/RIP} : Pointeur d'instruction (adresse suivante à exécuter)
+\end{itemize}
+
+
+\subsubsection*{Le Linking}
+\begin{figure}
+    \label{fig:linking}
+\end{figure}
+Le \textbf{linking} (ou \textit{édition de liens}) est l'étape finale de la compilation qui assemble plusieurs fichiers objets (\texttt{.o}/\texttt{.obj}) et bibliothèques (\texttt{.a}/\texttt{.lib}, \texttt{.so}/\texttt{.dll}) pour produire un \textbf{exécutable unique} (ou une bibliothèque).
+
+\begin{itemize}
+    \item[\textbf{\textcolor{red}{$\bullet$}}] \textbf{À quoi ça sert ?}
+    \item Combiner plusieurs modules compilés séparément.
+    \item Résoudre les références entre fichiers (ex: appels de fonctions).
+    \item Inclure des bibliothèques externes (ex: printf de la libc).
+\end{itemize}
+
+\subsubsection*{Exemple Simple}
+\begin{lstlisting}[language=ld]
+    gcc main.o utils.o -o programme  # Linking de 2 fichiers objets
+    \end{lstlisting}
+
+
+\begin{textblock*}{10cm}(10cm,26cm) % Position ajustée
     \textbf{sources : wiki.osdev.org, reddit.com, stackoverflow.com, operating system concepts par (Silberchatz,Gavin,Gagne)}
 \end{textblock*}
 
 \end{document}
+
+    
