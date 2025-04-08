@@ -10,6 +10,8 @@
 \usepackage{lipsum}
 \usepackage[colorlinks=true, linkcolor=blue, urlcolor=red]{hyperref}
 
+
+
 % Configuration des marges
 \geometry{a4paper, margin=1.5cm}
 
@@ -83,10 +85,10 @@ La cross-compilation est essentielle pour plusieurs raisons :
 \end{figure}
 
 \paragraph{Télécharger touskilfaut pour le compilateur}
-Tu auras besoin des sources de GCC (GNU Compiler Collection) et de binutils (un ensemble d'outils pour manipuler les binaires).
+:\\Tu auras besoin des sources de GCC (GNU Compiler Collection) et de binutils (un ensemble d'outils pour manipuler les binaires).
 
 \paragraph{Configurer le cross-compilateur}
-Tu dois configurer GCC pour qu'il sache qu'il doit produire du code pour la cible et non pour l'hôte. Cela se fait généralement en spécifiant des options de configuration lors de la compilation de GCC.
+:\\Tu dois configurer GCC pour qu'il sache qu'il doit produire du code pour la cible et non pour l'hôte. Cela se fait généralement en spécifiant des options de configuration lors de la compilation de GCC.\\
 
 Par exemple, si tu veux compiler pour une architecture ARM, tu utiliserais une commande comme :
 
@@ -100,10 +102,10 @@ Par exemple, si tu veux compiler pour une architecture ARM, tu utiliserais une c
 \end{itemize}
 
 \paragraph{Compiler et installer}
-Une fois configuré, tu compiles et installes le cross-compilateur. Cela peut prendre un certain temps car GCC est un gros projet.
+:\\Une fois configuré, tu compiles et installes le cross-compilateur. Cela peut prendre un certain temps car GCC est un gros projet.
 
 \paragraph{Utiliser le cross-compilateur}
-Une fois installé, tu peux utiliser ce compilateur pour générer des exécutables pour ta cible. Par exemple, si tu as un fichier C \texttt{hello.c}, tu peux le compiler avec :
+:\\Une fois installé, tu peux utiliser ce compilateur pour générer des exécutables pour ta cible. Par exemple, si tu as un fichier C \texttt{hello.c}, tu peux le compiler avec :
 
 \begin{lstlisting}
 arm-none-eabi-gcc -o hello hello.c
@@ -129,6 +131,7 @@ Ici nous allons voir comment créer un noyau (\textit{kernel}) minimal en C et a
 
     \item \textbf{Linker} : GNU LD
     \item \textbf{Émulateur} : QEMU, Bochs ou VirtualBox
+    \item \hyperref[fig:tutoinstalltt]{Mais comment on installe tout ça ????}
 \end{itemize}
 
 \subsubsection*{Configuration du cross-compiler}
@@ -152,7 +155,7 @@ ton_projet/
     \item Initialise la pile (\textit{stack}) \hyperref[fig:pilenasm]{La pile ?}.
     \item Appelle la fonction \texttt{kernel\_main} en C (une fonction externe a l'assembleur)
 \end{itemize}
-
+\newpage
 \subsubsection*{Exemple (NASM)}
 \begin{lstlisting}[language=assembler]
 bits 32          ; Mode 32 bits
@@ -248,6 +251,75 @@ qemu-system-i386 -kernel kernel.bin
     \item La pile doit être initialisée avant d'utiliser du C.
     \item Le cross-compiler est obligatoire pour éviter des problèmes.
 \end{itemize}
+\newpage
+
+\section*{Compléments}
+\subsubsection*{Mini tuto sur comment installer les Prérequis pour ton premier Kernel !}
+\begin{figure}[h]
+    \label{fig:tutoinstalltt}
+\end{figure}
+Ici et dans tout le tutoriel, on utilisera une machine linux et un shell sous linux, ce tutoriel n'est absolument pas dédiée aux machines sous windows ou sous mac-Os
+
+\textbf{Téléchargement et compilation de GCC :}
+\begin{itemize}
+    \item 
+    \begin{lstlisting}[language=bash]
+    wget https://ftp.gnu.org/gnu/gcc/gcc-12.2.0/gcc-12.2.0.tar.gz
+    tar xf gcc-12.2.0.tar.gz
+    mkdir build-gcc
+    cd build-gcc
+    ../gcc-12.2.0/configure --target=i686-elf --prefix=/usr/local/cross --disable-nls --enable-languages=c,c++ --without-headers
+    make all-gcc -j$(nproc)
+    sudo make install-gcc
+    \end{lstlisting}
+    \end{itemize}
+
+\textbf{Assembleur NASM}
+\begin{itemize}
+    \item Installation directe :
+    \begin{lstlisting}[language=bash]
+    sudo apt install nasm
+    \end{lstlisting}
+    
+    \item Vérification :
+    \begin{lstlisting}[language=bash]
+    nasm -v
+    \end{lstlisting}
+\end{itemize}
+
+\textbf{Linker GNU LD}
+\begin{itemize}
+    \item Inclus dans binutils :
+    \begin{lstlisting}[language=bash]
+    sudo apt install binutils
+    \end{lstlisting}
+    
+    \item Pour la version cross-compilée :
+    \begin{lstlisting}[language=bash]
+    # Installee automatiquement avec le cross-compilateur GCC
+    /usr/local/cross/bin/i686-elf-ld --version
+    \end{lstlisting}
+\end{itemize}
+
+\textbf{Emulateurs}
+\begin{itemize}
+    \item QEMU :
+    \begin{lstlisting}[language=bash]
+    sudo apt install qemu-system-x86
+    \end{lstlisting}
+    
+    \item Bochs :
+    \begin{lstlisting}[language=bash]
+    sudo apt install bochs bochs-x
+    \end{lstlisting}
+    
+    \item VirtualBox :
+    \begin{lstlisting}[language=bash]
+    sudo apt install virtualbox
+    \end{lstlisting}
+\end{itemize}
+
+
 
 \subsubsection*{Gnagnagna tu nous parles de x86 mais a quoi ça sert ????}
 \begin{figure}[h]
@@ -316,7 +388,6 @@ len     equ $ - message          ; Calcul de la longueur
     \end{lstlisting}
 \end{itemize}
 
-\newpage
 
 \subsubsection*{La Pile ?}
 \begin{figure}
@@ -391,6 +462,94 @@ Le \textbf{linking} (ou \textit{édition de liens}) est l'étape finale de la co
     \item Inclure des bibliothèques externes (ex: printf de la libc).
 \end{itemize}
 
+
+
+\subsection*{Explication de l'Adresse de Chargement (0x100000)}
+
+L’adresse de chargement (0x100000, soit 1 Mégaoctet en hexadécimal) est l’endroit en mémoire physique où votre noyau (kernel) sera chargé et exécuté. Cette valeur n’est pas choisie au hasard : elle est cruciale pour le fonctionnement d’un OS sur architecture x86.
+
+\textbf{Pourquoi 0x100000 (1 Mo) ?}
+
+\paragraph{a) Mémoire sous 1 Mo = Zone réservée}
+
+Sur les processeurs x86, la mémoire est divisée en plusieurs zones :
+
+\begin{center}
+\begin{tabular}{|c|c|}
+\hline
+\textbf{Adresse} & \textbf{Usage} \\
+\hline
+0x00000–0x9FFFF & Mémoire conventionnelle (BIOS, interruptions, DOS, matériel) \\
+0xA0000–0xFFFFF & Mémoire vidéo (VGA) + ROM BIOS (accès matériel) \\
+0x100000+ & Mémoire étendue (libre pour le noyau) \\
+\hline
+\end{tabular}
+\end{center}
+
+Si vous placez votre noyau en dessous de 1 Mo, vous risquez d’écraser :
+
+\begin{itemize}
+    \item Le BIOS (qui utilise 0xF0000–0xFFFFF).
+    \item La mémoire vidéo (écran texte VGA en 0xB8000).
+    \item Les vecteurs d’interruptions (en 0x0–0x3FF).
+\end{itemize}
+
+\paragraph{b) Au-delà de 1 Mo = Espace libre}
+
+À partir de 0x100000, la mémoire est non réservée et peut être utilisée librement par le noyau.
+
+C’est la première adresse hors des limitations du mode réel x86.
+
+\subsubsection*{Que se passe-t-il si on met une autre adresse ?}
+
+\begin{center}
+\begin{tabular}{|c|c|}
+\hline
+\textbf{Adresse} & \textbf{Conséquence} \\
+\hline
+0x0–0x9FFFF & Crash garanti (écrasement du BIOS/DOS/interruptions). \\
+0xA0000–0xFFFFF & Affichage corrompu (écriture dans la mémoire vidéo VGA). \\
+0x200000 (2 Mo) & Fonctionne, mais inutile (perte d’espace entre 1 Mo et 2 Mo). \\
+0x100000 (1 Mo) & Parfait : première adresse sûre et standard pour un noyau. \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsubsection*{Est-ce que cette adresse est fixe ?}
+
+Non ! Elle dépend de :
+
+\begin{itemize}
+    \item \textbf{L’architecture} :
+    \begin{itemize}
+        \item x86 32 bits : 0x100000 (standard pour les noyaux comme Linux).
+        \item x86 64 bits : Certains noyaux utilisent 0x200000 (2 Mo) pour l’alignement.
+        \item ARM/RISC-V : D’autres adresses sont utilisées (ex: 0x8000 pour le Raspberry Pi).
+    \end{itemize}
+    \item \textbf{Le bootloader} :
+    \begin{itemize}
+        \item GRUB, Limine ou UEFI peuvent charger le noyau à une adresse différente.
+        \item Votre linker script doit correspondre à ce que le bootloader attend.
+    \end{itemize}
+\end{itemize}
+
+\subsubsection*{Comment vérifier où est chargé votre noyau ?}
+\begin{itemize}
+    \item \textbf{En debug avec QEMU} :
+    \begin{verbatim}
+    qemu-system-x86_64 -kernel kernel.bin -display curses -d in_asm
+    \end{verbatim}
+    Cherchez \texttt{Loading kernel at 0x100000}.
+    
+    \item \textbf{En inspectant le binaire} :
+    \begin{verbatim}
+    objdump -x kernel.bin | grep "start address"
+    \end{verbatim}
+\end{itemize}
+
+
+
+
 \subsubsection*{Exemple Simple}
 \begin{lstlisting}[language=ld]
     gcc main.o utils.o -o programme  # Linking de 2 fichiers objets
@@ -402,5 +561,3 @@ Le \textbf{linking} (ou \textit{édition de liens}) est l'étape finale de la co
 \end{textblock*}
 
 \end{document}
-
-    
