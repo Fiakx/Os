@@ -9,6 +9,9 @@
 \usepackage[absolute]{textpos}
 \usepackage{lipsum}
 \usepackage[colorlinks=true, linkcolor=blue, urlcolor=red]{hyperref}
+\usepackage{amsmath}
+
+
 
 
 
@@ -87,31 +90,7 @@ La cross-compilation est essentielle pour plusieurs raisons :
 \paragraph{Télécharger touskilfaut pour le compilateur}
 :\\Tu auras besoin des sources de GCC (GNU Compiler Collection) et de binutils (un ensemble d'outils pour manipuler les binaires).
 
-\paragraph{Configurer le cross-compilateur}
-:\\Tu dois configurer GCC pour qu'il sache qu'il doit produire du code pour la cible et non pour l'hôte. Cela se fait généralement en spécifiant des options de configuration lors de la compilation de GCC.\\
-
-Par exemple, si tu veux compiler pour une architecture ARM, tu utiliserais une commande comme :
-
-\begin{lstlisting}
-./configure --target=arm-none-eabi --prefix=/usr/local/cross
-\end{lstlisting}
-
-\begin{itemize}
-    \item \texttt{--target} spécifie l'architecture cible (ici, \texttt{arm-none-eabi}).
-    \item \texttt{--prefix} indique où installer le cross-compilateur (ici, \texttt{/usr/local/cross}).
-\end{itemize}
-
-\paragraph{Compiler et installer}
-:\\Une fois configuré, tu compiles et installes le cross-compilateur. Cela peut prendre un certain temps car GCC est un gros projet.
-
-\paragraph{Utiliser le cross-compilateur}
-:\\Une fois installé, tu peux utiliser ce compilateur pour générer des exécutables pour ta cible. Par exemple, si tu as un fichier C \texttt{hello.c}, tu peux le compiler avec :
-
-\begin{lstlisting}
-arm-none-eabi-gcc -o hello hello.c
-\end{lstlisting}
-
-Cela produira un exécutable \texttt{hello} qui fonctionnera sur une machine ARM.
+Mais pas de problème je t'ai concocté un petit PDF qui te permettra de tout installer assez rapidement (y compris le nécessaire pour la suite du dévellopement du kernel)\\ (voir \url{https://github.com/Fiakx/Os/blob/main/Guide_Install.pdf})
 
 \begin{figure}[h!]
     \centering
@@ -158,57 +137,91 @@ ton_projet/
 \newpage
 \subsubsection*{Exemple (NASM)}
 \begin{lstlisting}[language=assembler]
-bits 32          ; Mode 32 bits
-section .text
-global start     ; Point d'entree pour le linker
-extern kernel_main ; Fonction principale en C
+    bits 32                     ; Specifie l'assemblage en mode 32 bits
 
-start:
-    mov esp, stack_top ; Initialise la pile, ESP = pointeur de pile, place en haut de la zone reservee
-    call kernel_main   ; Appel du noyau
-    hlt                ; Arrete le CPU
-
-section .bss
-stack_bottom: resb 4096 ; Reserve 4 Ko pour la pile (stack_bottom : Adresse de base de la pile.)
-stack_top: ; stack_top : Adresse du sommet (debut effectif,car la pile descend en memoire)
+    section .multiboot          ; Section pour l'en-tete Multiboot
+        align 4                 ; Alignement sur 4 octets (requis par Multiboot)
+            dd 0x1BADB002       ; Magic number Multiboot (identifie le noyau)
+            dd 0x00            ; Flags (aucun flag active)
+            dd -(0x1BADB002 + 0x00) ; Checksum (magic + flags + checksum = 0)
+    
+    section .text               ; Section du code executable
+    global start               ; Rend le symbole 'start' visible a l'editeur de liens
+    extern kernel_main         ; Declare que kernel_main est defini ailleurs
+    
+    start:
+            cli                 ; Desactive les interruptions (Clear Interrupt flag)
 \end{lstlisting}
-
+\hyperref[fig:flags]{Des Flags ???? Checksum ???}
 \subsection*{Code du Noyau (kernel.c)}
 \subsubsection*{Fonction principale}
-Le noyau écrit directement dans la mémoire vidéo VGA (adresse \texttt{0xB8000}).
+Normalement pour dévelloper un kernel pouvant afficher du texte, on ecrit le noyau de manière a ce qu'il agisse directement dans la mémoire vidéo VGA (adresse \texttt{0xB8000}).\\ Comme ça :
 
 \begin{lstlisting}[language=C]
-void kernel_main() {
-    const char *str = "Hello, kernel World!";
-    unsigned short *vga_buffer = (unsigned short *)0xB8000;
-    
-    for (int i = 0; str[i] != '\0'; i++) {
-        vga_buffer[i] = (unsigned short)str[i] | 0x0F00; 
-        /* Couleur blanc sur noir */
+    void kernel_main() {
+        // Chaine a afficher
+        const char *str = "Hello, kernel World!";
+        
+        // Pointeur vers le buffer VGA (memoire texte 80x25)
+        unsigned short *vga_buffer = (unsigned short *)0xB8000;
+        
+        // Boucle d'affichage caractere par caractere
+        for (int i = 0; str[i] != '\0'; i++) {
+            // Combine le caractere avec les attributs (couleur)
+            vga_buffer[i] = (unsigned short)str[i] | 0x0F00; 
+            /* Format: 
+             * Bits 0-7: caractere ASCII
+             * Bits 8-11: couleur avant-plan (0xF = blanc)
+             * Bits 12-15: couleur arriere-plan (0x0 = noir)
+             */
+        }
     }
-}
 \end{lstlisting}
-
+Cependant de nos jour la mémoire VGA traditionnelle (0xB8000) n'existe plus sur les systèmes modernes en mode UEFI. 
+Nous ne pouvons donc plus l'utiliser.\\Le code que vous avez vu ci dessus fonctionne parfaitement sur des vielles machines, il fonctionne aussi si vous voulez l'essayer sur une machine virtuelle comme quemu ou virtualbox.
+\\ Pour remédier a ça nous utiliserons un Framebuffer (ou tampon d'image). C'est une zone de mémoire vive (RAM) qui stocke les données brutes des pixels affichés à l'écran.\\C'est la méthode moderne pour gérer l'affichage graphique, remplaçant l'ancien mode texte VGA.
+\\(ça arrive bientot)
+\newpage
 \subsubsection*{Script de Linking (linker.ld)}
 \paragraph{Rôle}
 Organise les sections en mémoire et définit l'adresse de chargement (\texttt{0x100000}).
 
 \begin{lstlisting}[language=ld]
-ENTRY(start)           ; Point d'entree = 'start' (boot.asm)
+    /* Point d'entree du noyau - correspond au symbole 'start' dans boot.asm */
+ENTRY(start)
 
+/* Definition des sections memoire */
 SECTIONS {
-    . = 0x100000;      ; Adresse de chargement
+    /* Le noyau sera charge a l'adresse 1 Mebioctet (0x100000) */
+    . = 1M;
 
-    .text : {
-        *(.text)       ; Code
+    /* Section du code executable */
+    .text BLOCK(4K) : ALIGN(4K) {
+        *(.multiboot)  /* D'abord le header Multiboot (doit etre au debut) */
+        *(.text)       /* Puis tout le code des fichiers objets */
     }
 
-    .data : {
-        *(.data)       ; Donnees initialisees
+    /* Section des donnees en lecture seule (constantes, etc.) */
+    .rodata BLOCK(4K) : ALIGN(4K) {
+        *(.rodata)     /* Toutes les sections .rodata */
     }
 
-    .bss : {
-        *(.bss)        ; Donnees non initialisees
+    /* Section des donnees initialisees (variables globales initialisees) */
+    .data BLOCK(4K) : ALIGN(4K) {
+        *(.data)       /* Toutes les sections .data */
+    }
+
+    /* Section des donnees non-initialisees (BSS = Block Started by Symbol) */
+    .bss BLOCK(4K) : ALIGN(4K) {
+        *(COMMON)      /* Variables globales non initialisees (communes) */
+        *(.bss)       /* Toutes les sections .bss */
+        *(.stack)     /* Notre pile definie dans boot.asm */
+    }
+
+    /* Sections a ignorer dans le fichier final */
+    /DISCARD/ : {
+        *(.comment)    /* Commentaires du compilateur */
+        *(.note*)      /* Toutes les sections commencant par .note */
     }
 }
 \end{lstlisting}
@@ -253,73 +266,61 @@ qemu-system-i386 -kernel kernel.bin
 \end{itemize}
 \newpage
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 \section*{Compléments}
 \subsubsection*{Mini tuto sur comment installer les Prérequis pour ton premier Kernel !}
 \begin{figure}[h]
     \label{fig:tutoinstalltt}
 \end{figure}
-Ici et dans tout le tutoriel, on utilisera une machine linux et un shell sous linux, ce tutoriel n'est absolument pas dédiée aux machines sous windows ou sous mac-Os
-
-\textbf{Téléchargement et compilation de GCC :}
-\begin{itemize}
-    \item 
-    \begin{lstlisting}[language=bash]
-    wget https://ftp.gnu.org/gnu/gcc/gcc-12.2.0/gcc-12.2.0.tar.gz
-    tar xf gcc-12.2.0.tar.gz
-    mkdir build-gcc
-    cd build-gcc
-    ../gcc-12.2.0/configure --target=i686-elf --prefix=/usr/local/cross --disable-nls --enable-languages=c,c++ --without-headers
-    make all-gcc -j$(nproc)
-    sudo make install-gcc
-    \end{lstlisting}
-    \end{itemize}
-
-\textbf{Assembleur NASM}
-\begin{itemize}
-    \item Installation directe :
-    \begin{lstlisting}[language=bash]
-    sudo apt install nasm
-    \end{lstlisting}
-    
-    \item Vérification :
-    \begin{lstlisting}[language=bash]
-    nasm -v
-    \end{lstlisting}
-\end{itemize}
-
-\textbf{Linker GNU LD}
-\begin{itemize}
-    \item Inclus dans binutils :
-    \begin{lstlisting}[language=bash]
-    sudo apt install binutils
-    \end{lstlisting}
-    
-    \item Pour la version cross-compilée :
-    \begin{lstlisting}[language=bash]
-    # Installee automatiquement avec le cross-compilateur GCC
-    /usr/local/cross/bin/i686-elf-ld --version
-    \end{lstlisting}
-\end{itemize}
-
-\textbf{Emulateurs}
-\begin{itemize}
-    \item QEMU :
-    \begin{lstlisting}[language=bash]
-    sudo apt install qemu-system-x86
-    \end{lstlisting}
-    
-    \item Bochs :
-    \begin{lstlisting}[language=bash]
-    sudo apt install bochs bochs-x
-    \end{lstlisting}
-    
-    \item VirtualBox :
-    \begin{lstlisting}[language=bash]
-    sudo apt install virtualbox
-    \end{lstlisting}
-\end{itemize}
-
-
+Ici aussi, il faudra que tu suive ce tutoriel (ne reinstalle pas ce que tu as déja installé ça ne sert a rien).\\
+voir \url{https://github.com/Fiakx/Os/blob/main/Guide_Install.pdf}
 
 \subsubsection*{Gnagnagna tu nous parles de x86 mais a quoi ça sert ????}
 \begin{figure}[h]
@@ -550,10 +551,105 @@ Non ! Elle dépend de :
 
 
 
-\subsubsection*{Exemple Simple}
-\begin{lstlisting}[language=ld]
-    gcc main.o utils.o -o programme  # Linking de 2 fichiers objets
-    \end{lstlisting}
+
+
+
+
+
+
+
+
+
+
+
+\subsection*{Explication des " flags " et de " Checksum "}
+Dans l'en-tête \textbf{Multiboot}, les \textbf{flags} sont des bits indiquant au bootloader (ex: GRUB) les fonctionnalités requises par le noyau. Dans le code initial :
+\begin{figure}
+    \label{fig:flags}
+\end{figure}
+\begin{verbatim}
+dd 0x00  ; Flags désactivés
+\end{verbatim}
+
+\subsubsection*{Définition des Flags}
+Les flags courants sont définis par des bits individuels :
+
+\[
+\text{Flags} = \sum (\text{Bit}_i \times 2^i)
+\]
+
+\subsubsection*{Options principales}
+\begin{tabular}{|c|c|l|}
+\hline
+\textbf{Hex} & \textbf{Bit} & \textbf{Description} \\
+\hline
+0x01 & 0 & Alignement des modules (chargeurs externes) \\
+0x02 & 1 & Informations mémoire (\texttt{mem\_lower}, \texttt{mem\_upper}) \\
+0x04 & 2 & Mode vidéo (framebuffer) \\
+0x100 & 8 & Carte mémoire détaillée \\
+\hline
+\end{tabular}
+
+\subsubsection*{Exemple d'utilisation}
+Pour demander la mémoire et l'alignement des modules :
+
+\begin{verbatim}
+dd 0x03  ; 0x01 (Bit 0) + 0x02 (Bit 1)
+\end{verbatim}
+
+\subsubsection*{Accès aux données}
+Si \texttt{flags \& 0x02} est activé, GRUB stocke les infos mémoire dans une structure accessible via \texttt{EBX} :
+
+\begin{verbatim}
+struct multiboot_info {
+    uint32_t flags;
+    uint32_t mem_lower;  // Mémoire basse (KB)
+    uint32_t mem_upper;  // Mémoire haute (KB)
+    // ...
+};
+\end{verbatim}
+
+\subsection*{Checksum}
+Le \textbf{checksum} est un mécanisme de contrôle d'intégrité pour vérifier que l'en-tête Multiboot est valide.
+
+\subsubsection*{Fonctionnement}
+\begin{itemize}
+    \item \textbf{Formule} : 
+    \[
+    \text{Checksum} = -(\text{Magic} + \text{Flags})
+    \]
+    \begin{itemize}
+        \item \texttt{Magic} = \texttt{0x1BADB002} (constante Multiboot)
+        \item \texttt{Flags} = Options activées (ex: \texttt{0x00}, \texttt{0x03})
+    \end{itemize}
+    
+    \item \textbf{Vérification} :
+    Le bootloader calcule :
+    \[
+    \text{Magic} + \text{Flags} + \text{Checksum} = 0
+    \]
+\end{itemize}
+
+\subsubsection*{Exemple}
+Avec \texttt{Flags = 0x03} :
+\[
+\text{Checksum} = -(0x1BADB002 + 0x03) = \texttt{0xE4524FFB}
+\]
+
+\subsubsection*{Utilité}
+\begin{itemize}
+    \item Empeche de charger un noyau corrompu.
+    \item Garantit que le bootloader et le noyau se comprennent.
+\end{itemize}
+
+\begin{verbatim}
+; Exemple en assembleur
+dd 0x1BADB002   ; Magic  
+dd 0x03         ; Flags  
+dd 0xE4524FFB   ; Checksum
+\end{verbatim}
+
+
 
 
 \begin{textblock*}{10cm}(10cm,26cm) % Position ajustée
